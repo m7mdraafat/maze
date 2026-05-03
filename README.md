@@ -126,39 +126,3 @@ Open <http://localhost:5173>.
 
 > If you see TLS errors on the SignalR connection, run once: `dotnet dev-certs https --trust`.
 
----
-
-## Likely Discussion Questions (مناقشة)
-
-**Q1. Why is A\* optimal but Greedy is not?**
-A\* uses `f = g + h`. The `g` part keeps it honest about the cost paid so far, so when an admissible `h` is added it never commits to a worse path. Greedy uses only `h`, so once it picks a direction it never reconsiders — a wall can force a long detour that A\* would have avoided.
-
-**Q2. What is an admissible heuristic?**
-One that **never overestimates** the true remaining cost. Manhattan distance on a 4-neighbour grid is admissible because the real path needs *at least* `|Δrow| + |Δcol|` steps.
-
-**Q3. Why a `closed` set in A\* and Dijkstra but not Greedy?**
-In Dijkstra/A\* the *first* time a cell is dequeued its cost is provably optimal, so we lock it. In Greedy there is no cost guarantee at all; we just track `visited` to avoid infinite loops.
-
-**Q4. Why `IAsyncEnumerable` instead of returning a list of steps?**
-It lets us **stream** results. The algorithm yields one step, the hub forwards it immediately, the browser animates it — all before the search finishes. No memory buildup for huge grids.
-
-**Q5. Why SignalR and not REST polling?**
-Polling would be slow and chatty. SignalR holds a single WebSocket and pushes events the instant they happen — perfect for hundreds of micro-events per second.
-
-**Q6. What is the time complexity?**
-For all three with a binary-heap priority queue: **O(E log V)** where V is the number of cells and E is the number of edges (≤ 4V). Space: **O(V)**.
-
-**Q7. Why use `PriorityQueue<TElement, TPriority>` and not decrease-key?**
-.NET's built-in `PriorityQueue` does not support decrease-key efficiently. We instead **re-enqueue** a cell with a new lower priority and skip stale entries when we pop them (the `closed` check). This is standard practice and asymptotically equivalent.
-
-**Q8. Why is the frontend 3D?**
-Cell **height** carries extra information at a glance: walls are tall, the path "rises" above visited cells, and the algorithm's expansion looks like a wave. It makes the difference between the algorithms visually obvious during the demo.
-
-**Q9. How would you extend this?**
-- Add diagonal movement (heuristic becomes Chebyshev/octile).
-- Weighted cells (mud/water) — A\* and Dijkstra adapt naturally; Greedy still ignores cost.
-- Bidirectional A\* for further speed-ups.
-- Maze generators (recursive backtracking, Prim's) instead of pure random walls.
-
-**Q10. Why Zustand and not Redux/Context?**
-Redux is heavy boilerplate; Context re-renders every consumer on every change. Zustand has a one-line store and **selector-based** subscriptions, so animating one cell doesn't re-render the other 599.
